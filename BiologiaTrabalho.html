@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Biologia - INFO2A</title>
+<style>
+  :root{
+    --bg:#150407;
+    --panel:#2a0e14;
+    --panel2:#20090e;
+    --accent:#ff4d5e;
+    --accent2:#ff8a5b;
+    --danger:#ff1f3d;
+    --gold:#ffb347;
+    --text:#fbe9ea;
+    --muted:#c98a94;
+    --cell: clamp(32px, 7.2vw, 56px);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:radial-gradient(circle at 20% 10%, #4a121e 0%, var(--bg) 55%);
+    color:var(--text);
+    font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+    display:flex;
+    justify-content:center;
+    padding:16px;
+  }
+  #app{
+    width:100%;
+    max-width:900px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+  h1{
+    font-size:clamp(20px,4vw,28px);
+    margin:0;
+    text-align:center;
+    letter-spacing:1px;
+    background:linear-gradient(90deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+  }
+  .subtitle{ text-align:center; color:var(--muted); font-size:13px; margin-top:-6px;}
+  .panel{
+    background:var(--panel);
+    border:1px solid #5c1a24;
+    border-radius:14px;
+    padding:14px 16px;
+    box-shadow:0 6px 18px rgba(0,0,0,.45);
+  }
+  .hud{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .hud .stat{ font-size:13px; color:var(--muted); }
+  .hud .stat b{ color:var(--text); font-size:15px; }
+  .timerbar-outer{
+    width:100%;
+    height:10px;
+    background:#180508;
+    border-radius:6px;
+    overflow:hidden;
+    border:1px solid #5c1a24;
+  }
+  .timerbar-inner{
+    height:100%;
+    background:linear-gradient(90deg,var(--accent2),var(--accent));
+    width:100%;
+    transition:width .1s linear;
+  }
+  .timerbar-inner.flowing{ background:linear-gradient(90deg,var(--gold),var(--danger)); }
+  #fact{
+    font-size:13px;
+    color:var(--muted);
+    line-height:1.5;
+  }
+  #fact b{ color:var(--accent2); }
+  #boardWrap{
+    display:flex;
+    gap:14px;
+    align-items:flex-start;
+    flex-wrap:wrap;
+    justify-content:center;
+  }
+  #grid{
+    display:grid;
+    gap:4px;
+    background:#180509;
+    padding:8px;
+    border-radius:10px;
+    border:1px solid #5c1a24;
+  }
+  .cell{
+    width:var(--cell);
+    height:var(--cell);
+    background:#2a0f14;
+    border-radius:6px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    position:relative;
+    transition:background .15s;
+  }
+  .cell:hover{ background:#3d1620; }
+  .cell.locked{ cursor:default; }
+  .cell.activated{ background:#5a1420; box-shadow: inset 0 0 12px rgba(255,77,94,.6); }
+  .piece-svg{ width:82%; height:82%; overflow:visible; }
+  .node-start circle{ fill:#ff6b6b; }
+  .node-start text{ fill:#2c0407; font-weight:bold;}
+  .node-start line{ stroke:#ff6b6b; }
+  .node-relay circle{ fill:#8f2038; }
+  .node-relay text{ fill:#ffe3e8; font-weight:bold;}
+  .node-relay line{ stroke:#8f2038; }
+  .node-goal circle{ fill:var(--gold); }
+  .node-goal text{ fill:#2c1c00; font-weight:bold;}
+  .node-goal line{ stroke:var(--gold); }
+  #sidebar{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    min-width:120px;
+  }
+  #sidebar h3{ margin:0 0 4px 0; font-size:13px; color:var(--muted); font-weight:600;}
+  #queue{ display:flex; flex-direction:row; gap:6px; }
+  #sidebar #queue{ flex-direction:column; }
+  .qslot{
+    width:var(--cell);
+    height:var(--cell);
+    background:#2a0f14;
+    border-radius:6px;
+    border:1px solid #5c1a24;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .qslot:first-child{ border-color:var(--accent); box-shadow:0 0 10px rgba(255,77,94,.45); }
+  .legend{ font-size:12px; color:var(--muted); line-height:1.8; }
+  .legend span.dot{ display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; }
+  .btnrow{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+  button{
+    background:linear-gradient(90deg,var(--accent2),var(--accent));
+    border:none;
+    color:#2c0407;
+    font-weight:700;
+    padding:10px 18px;
+    border-radius:10px;
+    cursor:pointer;
+    font-size:14px;
+  }
+  button.secondary{
+    background:#3a1319;
+    color:var(--text);
+    border:1px solid #5c1a24;
+  }
+  button:active{ transform:scale(.97); }
+  #modalOverlay{
+    position:fixed; inset:0;
+    background:rgba(16,3,5,.8);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    z-index:20;
+  }
+  #modalOverlay.show{ display:flex; }
+  #modalBox{
+    background:var(--panel2);
+    border:1px solid #5c1a24;
+    border-radius:16px;
+    padding:24px;
+    max-width:460px;
+    text-align:center;
+  }
+  #modalBox h2{ margin-top:0; }
+  #modalBox p{ color:var(--muted); font-size:14px; line-height:1.6;}
+  .hidden{ display:none !important; }
+  footer{ text-align:center; color:var(--muted); font-size:11px; margin-top:6px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div>
+    <h1>Biologia IFMG</h1>
+    <div class="subtitle">Conecte o impulso nervoso do receptor ao efetor — Sistema Nervoso Periférico</div>
+  </div>
+
+  <div class="panel hud">
+    <div class="stat">Fase: <b id="hudPhase">-</b></div>
+    <div class="stat">Pontuação: <b id="hudScore">0</b></div>
+    <div class="stat" id="hudState">Toque em Começar</div>
+  </div>
+
+  <div class="panel" id="timerPanel">
+    <div class="timerbar-outer"><div class="timerbar-inner" id="timerbar"></div></div>
+  </div>
+
+  <div class="panel" id="factPanel">
+    <div id="fact">Clique em <b>Começar</b> para iniciar o jogo.</div>
+  </div>
+
+  <div class="panel" id="boardPanel" style="display:none;">
+    <div id="boardWrap">
+      <div id="grid"></div>
+      <div id="sidebar">
+        <div>
+          <h3>Próximos impulsos</h3>
+          <div id="queue"></div>
+        </div>
+        <div class="legend">
+          <div><span class="dot" style="background:#ff4d5e"></span>R = Receptor</div>
+          <div><span class="dot" style="background:#5c1a24"></span>M = Medula/Gânglio</div>
+          <div><span class="dot" style="background:#ffb347"></span>E = Efetor (músculo)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="btnrow">
+    <button id="btnStartGame">Começar</button>
+  </div>
+
+  <footer>Clique numa célula vazia para colocar a próxima peça · Clique numa peça já colocada para girá-la</footer>
+</div>
+
+<div id="modalOverlay">
+  <div id="modalBox">
+    <h2 id="modalTitle"></h2>
+    <p id="modalText"></p>
+    <div class="btnrow" id="modalButtons"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- CONFIG ----------
+  const PHASES = [
+    {name:"Fase 1 — Fácil A", rows:5, cols:6, countdown:20, flowSpeed:700,
+     fact:"O sistema nervoso periférico (SNP) conecta o sistema nervoso central ao resto do corpo, por meio de vias <b>aferentes</b> (sensitivas) e <b>eferentes</b> (motoras)."},
+    {name:"Fase 2 — Fácil B", rows:5, cols:6, countdown:17, flowSpeed:650,
+     fact:"Neurônios <b>aferentes</b> (sensitivos) levam a informação captada pelos receptores até a medula espinhal ou o encéfalo."},
+    {name:"Fase 3 — Médio A", rows:6, cols:7, countdown:15, flowSpeed:500,
+     fact:"Neurônios <b>eferentes</b> (motores) levam os comandos do sistema nervoso central até os músculos e glândulas — os efetores."},
+    {name:"Fase 4 — Médio B", rows:6, cols:7, countdown:13, flowSpeed:450,
+     fact:"Um <b>arco reflexo</b> é o trajeto mais simples do impulso: receptor → via aferente → centro integrador → via eferente → efetor."},
+    {name:"Fase 5 — Difícil A", rows:7, cols:8, countdown:11, flowSpeed:350,
+     fact:"Os <b>gânglios</b> são aglomerados de corpos celulares de neurônios que ficam fora do sistema nervoso central, importantes na via aferente."},
+    {name:"Fase 6 — Difícil B", rows:7, cols:8, countdown:9, flowSpeed:280,
+     fact:"A velocidade de condução do impulso nervoso depende do diâmetro do axônio e da presença de <b>bainha de mielina</b> — por isso os axônios do jogo têm aspecto segmentado!"}
+  ];
+
+  const LOSE_REASONS = {
+    empty:"O impulso chegou a um trecho sem axônio e se perdeu no caminho. Complete a via antes que o impulso chegue lá!",
+    mismatch:"A peça não estava orientada para receber o impulso — como uma sinapse que não encaixou corretamente.",
+    loop:"O impulso entrou em um circuito fechado e ficou girando sem chegar ao efetor.",
+    bounds:"O impulso saiu da via nervosa e se perdeu no tecido ao redor.",
+    skipRelay:"O impulso tentou ir direto do receptor ao efetor, sem passar pela medula/gânglio! No corpo, o sinal sempre passa primeiro pelo centro integrador (medula) antes de seguir pela via eferente até o efetor."
+  };
+
+  const DIRS = { U:{dr:-1,dc:0}, D:{dr:1,dc:0}, L:{dr:0,dc:-1}, R:{dr:0,dc:1} };
+  const OPP  = { U:'D', D:'U', L:'R', R:'L' };
+
+  // ---------- STATE ----------
+  let phaseIndex = 0;
+  let rows, cols, grid, queue, score = 0;
+  let startPos, relayPos, goalPos;
+  let state = 'idle'; // idle | countdown | flowing | won | lost
+  let countdownRemaining = 0;
+  let countdownTimer = null;
+  let flowTimer = null;
+  let flowCurrent = null, flowDir = null, visitedThisRun = null, passedRelay = false;
+
+  // ---------- DOM ----------
+  const gridEl = document.getElementById('grid');
+  const queueEl = document.getElementById('queue');
+  const hudPhase = document.getElementById('hudPhase');
+  const hudScore = document.getElementById('hudScore');
+  const hudState = document.getElementById('hudState');
+  const timerbar = document.getElementById('timerbar');
+  const factEl = document.getElementById('fact');
+  const boardPanel = document.getElementById('boardPanel');
+  const btnStartGame = document.getElementById('btnStartGame');
+  const modalOverlay = document.getElementById('modalOverlay');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalText = document.getElementById('modalText');
+  const modalButtons = document.getElementById('modalButtons');
+
+  // ---------- PIECE LOGIC ----------
+  function randPiece(){ return Math.random() < 0.55 ? 'straight' : 'curve'; }
+
+  function getOpenings(type, rot){
+    if(type === 'straight'){
+      return (rot % 180 === 0) ? ['U','D'] : ['L','R'];
+    }
+    if(type === 'curve'){
+      const map = {0:['U','R'], 90:['R','D'], 180:['D','L'], 270:['L','U']};
+      return map[rot];
+    }
+    return [];
+  }
+
+  function svgPiece(type, rot, glow){
+    const stroke = glow ? '#ff4d5e' : '#ff8a5b';
+    let d = '';
+    if(type === 'straight'){
+      d = (rot % 180 === 0) ? 'M50,0 L50,100' : 'M0,50 L100,50';
+    } else {
+      const map = {0:'M50,0 Q50,50 100,50', 90:'M100,50 Q50,50 50,100', 180:'M50,100 Q50,50 0,50', 270:'M0,50 Q50,50 50,0'};
+      d = map[rot];
+    }
+    return '<svg viewBox="0 0 100 100" class="piece-svg"><path d="'+d+'" fill="none" stroke="'+stroke+'" stroke-width="11" stroke-linecap="round" stroke-dasharray="9,6"/></svg>';
+  }
+
+  function svgNode(kind, label){
+    const cls = kind === 'start' ? 'node-start' : (kind === 'relay' ? 'node-relay' : 'node-goal');
+    let stubs = '';
+    if(kind === 'start'){
+      stubs = '<line x1="50" y1="50" x2="100" y2="50" stroke-width="11" stroke-linecap="round"/>';
+    } else {
+      stubs = '<line x1="50" y1="50" x2="100" y2="50" stroke-width="9" stroke-linecap="round"/>'+
+              '<line x1="50" y1="50" x2="0" y2="50" stroke-width="9" stroke-linecap="round"/>'+
+              '<line x1="50" y1="50" x2="50" y2="0" stroke-width="9" stroke-linecap="round"/>'+
+              '<line x1="50" y1="50" x2="50" y2="100" stroke-width="9" stroke-linecap="round"/>';
+    }
+    return '<svg viewBox="0 0 100 100" class="piece-svg '+cls+'">'+stubs+'<circle cx="50" cy="50" r="26"/><text x="50" y="59" text-anchor="middle" font-size="30" font-family="Segoe UI, Arial">'+label+'</text></svg>';
+  }
+
+  // ---------- PHASE SETUP ----------
+  function initPhase(idx){
+    const p = PHASES[idx];
+    rows = p.rows; cols = p.cols;
+    grid = [];
+    for(let r=0;r<rows;r++){
+      const row = [];
+      for(let c=0;c<cols;c++) row.push({type:null, rot:0, activated:false});
+      grid.push(row);
+    }
+    const sRow = Math.floor(rows/2);
+    const rRow = (idx*2+1) % rows;
+    const gRow = (idx*3+2) % rows;
+    const rCol = Math.floor(cols/2);
+    startPos = {r:sRow, c:0};
+    relayPos = {r:rRow, c:rCol};
+    goalPos  = {r:gRow, c:cols-1};
+
+    grid[startPos.r][startPos.c] = {type:'start', rot:0, exitDir:'R', activated:true};
+    grid[relayPos.r][relayPos.c] = {type:'relay', rot:0, exitDir:'R', activated:false};
+    grid[goalPos.r][goalPos.c]   = {type:'goal', rot:0, activated:false};
+
+    queue = [randPiece(), randPiece(), randPiece()];
+    state = 'countdown';
+    countdownRemaining = p.countdown * 1000;
+
+    hudPhase.textContent = p.name;
+    factEl.innerHTML = p.fact;
+    boardPanel.style.display = 'block';
+    document.getElementById('timerPanel').style.display = 'block';
+    timerbar.classList.remove('flowing');
+    hudState.textContent = 'Monte a via antes do impulso disparar!';
+
+    renderGrid();
+    renderQueue();
+    startCountdownTimer(p.countdown*1000);
+  }
+
+  function startCountdownTimer(total){
+    clearInterval(countdownTimer);
+    const start = Date.now();
+    countdownTimer = setInterval(function(){
+      const elapsed = Date.now() - start;
+      const remaining = Math.max(0, total - elapsed);
+      timerbar.style.width = (remaining/total*100) + '%';
+      if(remaining <= 0){
+        clearInterval(countdownTimer);
+        beginFlow();
+      }
+    }, 100);
+  }
+
+  function beginFlow(){
+    state = 'flowing';
+    hudState.textContent = 'Impulso em movimento...';
+    timerbar.style.width = '100%';
+    timerbar.classList.add('flowing');
+    flowCurrent = {r:startPos.r, c:startPos.c};
+    flowDir = grid[startPos.r][startPos.c].exitDir;
+    visitedThisRun = new Set();
+    passedRelay = false;
+    const p = PHASES[phaseIndex];
+    flowTimer = setInterval(flowStep, p.flowSpeed);
+  }
+
+  function flowStep(){
+    const d = DIRS[flowDir];
+    const nr = flowCurrent.r + d.dr;
+    const nc = flowCurrent.c + d.dc;
+    if(nr < 0 || nr >= rows || nc < 0 || nc >= cols){
+      clearInterval(flowTimer);
+      losePhase('bounds');
+      return;
+    }
+    const next = grid[nr][nc];
+    const key = nr+','+nc;
+
+    if(next.type === 'goal'){
+      clearInterval(flowTimer);
+      if(!passedRelay){
+        losePhase('skipRelay');
+        return;
+      }
+      next.activated = true;
+      renderGrid();
+      winPhase();
+      return;
+    }
+    if(!next.type){
+      clearInterval(flowTimer);
+      losePhase('empty');
+      return;
+    }
+    if(visitedThisRun.has(key)){
+      clearInterval(flowTimer);
+      losePhase('loop');
+      return;
+    }
+    visitedThisRun.add(key);
+
+    if(next.type === 'relay'){
+      next.activated = true;
+      passedRelay = true;
+      flowDir = next.exitDir;
+      flowCurrent = {r:nr, c:nc};
+      renderGrid();
+      return;
+    }
+
+    const openings = getOpenings(next.type, next.rot);
+    const entrySide = OPP[flowDir];
+    if(openings.indexOf(entrySide) === -1){
+      clearInterval(flowTimer);
+      losePhase('mismatch');
+      return;
+    }
+    const exitSide = openings[0] === entrySide ? openings[1] : openings[0];
+    next.activated = true;
+    flowDir = exitSide;
+    flowCurrent = {r:nr, c:nc};
+    renderGrid();
+  }
+
+  // ---------- INTERACTION ----------
+  function placePiece(r,c){
+    if(state !== 'countdown' && state !== 'flowing') return;
+    const cell = grid[r][c];
+    if(cell.type) return;
+    const type = queue.shift();
+    queue.push(randPiece());
+    grid[r][c] = {type:type, rot:0, activated:false};
+    renderGrid();
+    renderQueue();
+  }
+
+  function rotatePiece(r,c){
+    if(state !== 'countdown' && state !== 'flowing') return;
+    const cell = grid[r][c];
+    if(!cell.type || cell.type === 'start' || cell.type === 'relay' || cell.type === 'goal') return;
+    if(cell.activated) return;
+    cell.rot = (cell.rot + 90) % 360;
+    renderGrid();
+  }
+
+  gridEl.addEventListener('click', function(e){
+    const cellEl = e.target.closest('.cell');
+    if(!cellEl) return;
+    const r = parseInt(cellEl.dataset.r,10);
+    const c = parseInt(cellEl.dataset.c,10);
+    const cell = grid[r][c];
+    if(!cell.type) placePiece(r,c);
+    else rotatePiece(r,c);
+  });
+
+  // ---------- RENDER ----------
+  function renderGrid(){
+    gridEl.style.gridTemplateColumns = 'repeat('+cols+', var(--cell))';
+    gridEl.style.gridTemplateRows = 'repeat('+rows+', var(--cell))';
+    let html = '';
+    for(let r=0;r<rows;r++){
+      for(let c=0;c<cols;c++){
+        const cell = grid[r][c];
+        let inner = '';
+        let cls = 'cell';
+        if(cell.type === 'start'){ inner = svgNode('start','R'); cls += ' locked activated'; }
+        else if(cell.type === 'relay'){ inner = svgNode('relay','M'); cls += ' locked'+(cell.activated?' activated':''); }
+        else if(cell.type === 'goal'){ inner = svgNode('goal','E'); cls += ' locked'+(cell.activated?' activated':''); }
+        else if(cell.type){ inner = svgPiece(cell.type, cell.rot, cell.activated); cls += cell.activated?' activated':''; }
+        html += '<div class="'+cls+'" data-r="'+r+'" data-c="'+c+'">'+inner+'</div>';
+      }
+    }
+    gridEl.innerHTML = html;
+  }
+
+  function renderQueue(){
+    let html = '';
+    for(let i=0;i<queue.length;i++){
+      html += '<div class="qslot">'+svgPiece(queue[i], 0, false)+'</div>';
+    }
+    queueEl.innerHTML = html;
+  }
+
+  function updateHud(){
+    hudScore.textContent = score;
+  }
+
+  // ---------- WIN / LOSE ----------
+  function winPhase(){
+    state = 'won';
+    const gained = 100 * (phaseIndex+1);
+    score += gained;
+    updateHud();
+    const isLast = phaseIndex === PHASES.length - 1;
+    showModal(
+      isLast ? '🎉 Você completou o Sistema Nervoso Periférico!' : '⚡ Impulso entregue!',
+      'O impulso percorreu a via nervosa com sucesso, do receptor ao efetor. +'+gained+' pontos.'+
+      (isLast ? ' Você conectou todas as 6 fases — do arco reflexo mais simples ao mais complexo!' : ''),
+      isLast ? [
+        {label:'Jogar novamente', cls:'', action:function(){ phaseIndex=0; score=0; updateHud(); hideModal(); initPhase(0); }}
+      ] : [
+        {label:'Próxima fase', cls:'', action:function(){ phaseIndex++; hideModal(); initPhase(phaseIndex); }}
+      ]
+    );
+  }
+
+  function losePhase(reason){
+    state = 'lost';
+    showModal(
+      '💥 Sinapse falhou!',
+      LOSE_REASONS[reason],
+      [
+        {label:'Tentar novamente', cls:'', action:function(){ hideModal(); initPhase(phaseIndex); }},
+        {label:'Reiniciar jogo', cls:'secondary', action:function(){ phaseIndex=0; score=0; updateHud(); hideModal(); initPhase(0); }}
+      ]
+    );
+  }
+
+  function showModal(title, text, buttons){
+    modalTitle.textContent = title;
+    modalText.innerHTML = text;
+    modalButtons.innerHTML = '';
+    buttons.forEach(function(b){
+      const btn = document.createElement('button');
+      btn.textContent = b.label;
+      if(b.cls) btn.className = b.cls;
+      btn.addEventListener('click', b.action);
+      modalButtons.appendChild(btn);
+    });
+    modalOverlay.classList.add('show');
+  }
+  function hideModal(){ modalOverlay.classList.remove('show'); }
+
+  // ---------- START ----------
+  btnStartGame.addEventListener('click', function(){
+    btnStartGame.classList.add('hidden');
+    phaseIndex = 0; score = 0; updateHud();
+    initPhase(0);
+  });
+
+})();
+</script>
+</body>
+</html>
